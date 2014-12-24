@@ -109,6 +109,7 @@ func getPageAndParse(zkzh, xm string) ([]string) {
 
     return user_elements
 }
+
 func mainAgrs() (string, string, error) {
     if len(os.Args) == 3 {
         if len(os.Args[1]) > 12 {
@@ -130,7 +131,7 @@ func main() {
         reader := bufio.NewReader(os.Stdin)
         
         fmt.Print("输入准考证号：")
-        input, _,  _ := reader.ReadLine()
+        input, _, _ := reader.ReadLine()
         kh = string(input)
 
         fmt.Print("    输入姓名：")
