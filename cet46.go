@@ -131,7 +131,6 @@ func mainAgrs() (string, string, error) {
 }
 
 
-
 func readFromCacheFile(filename string) ([]CachedUser) {
     f, _ := os.Open(filename)
     defer f.Close()
