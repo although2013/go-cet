@@ -58,16 +58,23 @@ type User struct {
     xzyfy   string
 }
 
-func (u *User) SetUserAll(arr []string){
-    u.xx     = arr[1]
-    u.xm     = arr[0]
-    u.kslb   = arr[2]
-    u.zkzh   = arr[3]
-    u.kssj   = arr[4]
-    u.zf     = arr[5]
-    u.tl     = arr[6]
-    u.yd     = arr[7]
-    u.xzyfy  = arr[8]
+type CachedUser struct {
+    kh    string
+    xm    string
+}
+
+
+
+func (self *User) SetUserAll(arr []string){
+    self.xx     =  arr[1]
+    self.xm     =  arr[0]
+    self.kslb   =  arr[2]
+    self.zkzh   =  arr[3]
+    self.kssj   =  arr[4]
+    self.zf     =  arr[5]
+    self.tl     =  arr[6]
+    self.yd     =  arr[7]
+    self.xzyfy  =  arr[8]
 }
 
 
@@ -109,6 +116,7 @@ func getPageAndParse(zkzh, xm string) ([]string) {
 
     return user_elements
 }
+
 func mainAgrs() (string, string, error) {
     if len(os.Args) == 3 {
         if len(os.Args[1]) > 12 {
@@ -122,47 +130,109 @@ func mainAgrs() (string, string, error) {
     
 }
 
-func main() {
-    kh, xm, err := mainAgrs()
-    if err != nil {
-        fmt.Println("WARN: no arguments put int command.\n")
 
-        reader := bufio.NewReader(os.Stdin)
-        
-        fmt.Print("输入准考证号：")
-        input, _,  _ := reader.ReadLine()
-        kh = string(input)
 
-        fmt.Print("    输入姓名：")
-        input, _, _ = reader.ReadLine()
-        xm = string(input)
+func readFromCacheFile(filename string) ([]CachedUser) {
+    f, _ := os.Open(filename)
+    defer f.Close()
+    reader := bufio.NewReader(f)
+    Bytes, _ := ioutil.ReadAll(reader)
 
-        //fmt.Printf(": %v --\n", string([]byte(input)))
-        //fmt.Printf(": %v --\n", string([]byte(input)))
+    re_kh, _ := regexp.Compile(`\d{15}`)
+    re_xm, _ := regexp.Compile(`,.{2,6};`)
+
+    arr_kh := re_kh.FindAllString(string(Bytes), -1)
+    arr_xm := re_xm.FindAllString(string(Bytes), -1)
+
+    len_kh := len(arr_kh)
+    len_xm := len(arr_xm)
+
+    for i := 0; i < len_xm; i++ {
+        length := len(arr_xm[i])
+        arr_xm[i] = arr_xm[i][1:length-1]
     }
 
-    arr := getPageAndParse(kh, xm)
+    var len_min = 0
+    if len_xm > len_kh {
+        len_min = len_kh
+    } else {
+        len_min = len_xm
+    }
 
-    user := new(User)
-    user.SetUserAll(arr)
+    cachedUsers := make([]CachedUser, len_min)
 
-    fmt.Println(user.xx)
-    fmt.Println(user.xm)
-    fmt.Println(user.zkzh)
-    fmt.Println(user.kslb)
-    fmt.Println(user.kssj)
+    for i := 0; i < len_min; i++ {
+        cachedUsers[i].xm = arr_xm[i]
+        cachedUsers[i].kh = arr_kh[i]
+    }
+
+    return cachedUsers
+}
+
+func enterFromCommand() (kh, xm string) {
+    fmt.Println("WARN: no arguments put int command.\n")
+
+    reader := bufio.NewReader(os.Stdin)
+
+    fmt.Print("输入准考证号：")
+    input, _,  _ := reader.ReadLine()
+    kh = string(input)
+
+    fmt.Print("    输入姓名：")
+    input, _, _ = reader.ReadLine()
+    xm = string(input)
+    return kh, xm
+}
+
+func (self *User) PrintOut() {
+    fmt.Println(self.xx)
+    fmt.Println(self.xm)
+    fmt.Println(self.zkzh)
+    fmt.Println(self.kslb)
+    fmt.Println(self.kssj)
     fmt.Printf("-----------------\n")
-    fmt.Printf("%-9s%6s\n", "总分:", user.zf)
-    fmt.Printf("%-9s%6s\n", "听力:", user.tl)
-    fmt.Printf("%-9s%6s\n", "阅读:", user.yd)
-    fmt.Printf("%-7s%6s\n", "写作翻译:", user.xzyfy)
+    fmt.Printf("%-9s%6s\n", "总分:", self.zf)
+    fmt.Printf("%-9s%6s\n", "听力:", self.tl)
+    fmt.Printf("%-9s%6s\n", "阅读:", self.yd)
+    fmt.Printf("%-7s%6s\n", "写作翻译:", self.xzyfy)
 
-    zf_int, _ := strconv.Atoi(user.zf)
+    zf_int, _ := strconv.Atoi(self.zf)
     if zf_int > 425 {
         fmt.Println("\n通过考试！\n")
     } else {
         fmt.Println("\n考试没有通过\n")
     }
+}
+
+func DoOneUser(kh, xm string) (*User) {
+    arr := getPageAndParse(kh, xm)
+    user := new(User)
+    user.SetUserAll(arr)
+    user.PrintOut()
+    return user
+}
+
+
+func main() {
+    kh, xm, err := mainAgrs()
+    if err != nil {
+        if _, err := os.Stat("user-cache.txt"); err != nil {
+            kh, xm = enterFromCommand()
+            _ = DoOneUser(kh, xm)
+        } else {
+            cachedUsers := readFromCacheFile("user-cache.txt")
+            for i := 0; i < len(cachedUsers); i++ {
+                fmt.Println("===================\n")
+                kh = cachedUsers[i].kh
+                xm = cachedUsers[i].xm
+
+                _ = DoOneUser(kh, xm)
+            }
+        }
+    } else {
+        _ = DoOneUser(kh, xm)
+    }
+
 
     fmt.Printf("回车键退出...")
     fmt.Scanln()
