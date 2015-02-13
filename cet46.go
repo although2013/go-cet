@@ -10,7 +10,7 @@ import (
     "strings"
     "regexp"
     "strconv"
-    "errors"
+    //"errors"
     "bufio"
 )
 
@@ -117,18 +117,18 @@ func getPageAndParse(zkzh, xm string) ([]string) {
     return user_elements
 }
 
-func mainAgrs() (string, string, error) {
-    if len(os.Args) == 3 {
-        if len(os.Args[1]) > 12 {
-            return os.Args[1], os.Args[2], nil;
-        } else {
-            return os.Args[2], os.Args[1], nil;
-        }
-    } else {
-        return "", "", errors.New("no main arguments");
-    }
-    
-}
+//func mainAgrs() (string, string, error) {
+//    if len(os.Args) == 3 {
+//        if len(os.Args[1]) > 12 {
+//            return os.Args[1], os.Args[2], nil;
+//        } else {
+//            return os.Args[2], os.Args[1], nil;
+//        }
+//    } else {
+//        return "", "", errors.New("no main arguments");
+//    }
+//    
+//}
 
 
 func readFromCacheFile(filename string) ([]CachedUser) {
@@ -168,20 +168,20 @@ func readFromCacheFile(filename string) ([]CachedUser) {
     return cachedUsers
 }
 
-func enterFromCommand() (kh, xm string) {
-    fmt.Println("WARN: no arguments put int command.\n")
-
-    reader := bufio.NewReader(os.Stdin)
-
-    fmt.Print("输入准考证号：")
-    input, _,  _ := reader.ReadLine()
-    kh = string(input)
-
-    fmt.Print("    输入姓名：")
-    input, _, _ = reader.ReadLine()
-    xm = string(input)
-    return kh, xm
-}
+//func enterFromCommand() (kh, xm string) {
+//    fmt.Println("WARN: no arguments put int command.\n")
+//
+//    reader := bufio.NewReader(os.Stdin)
+//
+//    fmt.Print("输入准考证号：")
+//    input, _, _ := reader.ReadLine()
+//    kh = string(input)
+//
+//    fmt.Print("    输入姓名：")
+//    input, _, _ = reader.ReadLine()
+//    xm = string(input)
+//    return kh, xm
+//}
 
 func (self *User) PrintOut() {
     fmt.Println(self.xx)
@@ -203,33 +203,39 @@ func (self *User) PrintOut() {
     }
 }
 
-func DoOneUser(kh, xm string) (*User) {
+func DoOneUser(kh, xm string) {
     arr := getPageAndParse(kh, xm)
     user := new(User)
     user.SetUserAll(arr)
     user.PrintOut()
-    return user
+    c <- 1
 }
 
 
-func main() {
-    kh, xm, err := mainAgrs()
-    if err != nil {
-        if _, err := os.Stat("user-cache.txt"); err != nil {
-            kh, xm = enterFromCommand()
-            _ = DoOneUser(kh, xm)
-        } else {
-            cachedUsers := readFromCacheFile("user-cache.txt")
-            for i := 0; i < len(cachedUsers); i++ {
-                fmt.Println("===================\n")
-                kh = cachedUsers[i].kh
-                xm = cachedUsers[i].xm
 
-                _ = DoOneUser(kh, xm)
-            }
-        }
-    } else {
-        _ = DoOneUser(kh, xm)
+
+var c chan int
+var num int
+
+func main() {
+    c = make(chan int)
+
+    if _, err := os.Stat("user-cache.txt"); err != nil {
+        //no cache file
+    }
+
+    cachedUsers := readFromCacheFile("user-cache.txt")
+
+    length := len(cachedUsers)
+
+    for i := 0; i < length; i++ {
+        kh := cachedUsers[i].kh
+        xm := cachedUsers[i].xm
+        go DoOneUser(kh, xm)
+    }
+
+    for i := 0; i < length; i++ {
+        <- c
     }
 
 
